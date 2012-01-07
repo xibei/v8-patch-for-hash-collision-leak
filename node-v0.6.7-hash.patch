@@ -1,0 +1,85 @@
+diff -Nura node-v0.6.7/deps/v8/src/objects-inl.h node-v0.6.7.patched/deps/v8/src/objects-inl.h
+--- node-v0.6.7/deps/v8/src/objects-inl.h	2012-01-08 02:23:39.000000000 +0800
++++ node-v0.6.7.patched/deps/v8/src/objects-inl.h	2012-01-08 02:23:55.000000000 +0800
+@@ -4290,6 +4290,10 @@
+   // Get the calculated raw hash value and do some more bit ops to distribute
+   // the hash further. Ensure that we never return zero as the hash value.
+   uint32_t result = raw_running_hash_;
++  result += salt_;
++  result += (result << 10);
++  result ^= (result >> 6);
++
+   result += (result << 3);
+   result ^= (result >> 11);
+   result += (result << 15);
+diff -Nura node-v0.6.7/deps/v8/src/objects.cc node-v0.6.7.patched/deps/v8/src/objects.cc
+--- node-v0.6.7/deps/v8/src/objects.cc	2012-01-08 02:23:39.000000000 +0800
++++ node-v0.6.7.patched/deps/v8/src/objects.cc	2012-01-08 02:23:55.000000000 +0800
+@@ -57,6 +57,7 @@
+ // constants for their indices.
+ const int kGetterIndex = 0;
+ const int kSetterIndex = 1;
++const uint32_t StringHasher::salt_ = V8::Random(Isolate::Current());
+ 
+ MUST_USE_RESULT static MaybeObject* CreateJSValue(JSFunction* constructor,
+                                                   Object* value) {
+@@ -10481,6 +10482,7 @@
+  public:
+   TwoCharHashTableKey(uint32_t c1, uint32_t c2)
+     : c1_(c1), c2_(c2) {
++    uint32_t salt = StringHasher::GetSalt();
+     // Char 1.
+     uint32_t hash = c1 + (c1 << 10);
+     hash ^= hash >> 6;
+@@ -10488,6 +10490,10 @@
+     hash += c2;
+     hash += hash << 10;
+     hash ^= hash >> 6;
++    // Salt
++    hash += salt;
++    hash += hash << 10;
++    hash ^= hash >> 6;
+     // GetHash.
+     hash += hash << 3;
+     hash ^= hash >> 11;
+diff -Nura node-v0.6.7/deps/v8/src/objects.h node-v0.6.7.patched/deps/v8/src/objects.h
+--- node-v0.6.7/deps/v8/src/objects.h	2012-01-08 02:23:39.000000000 +0800
++++ node-v0.6.7.patched/deps/v8/src/objects.h	2012-01-08 02:23:55.000000000 +0800
+@@ -5765,6 +5765,8 @@
+   // value is represented decimal value.
+   static uint32_t MakeArrayIndexHash(uint32_t value, int length);
+ 
++  static const uint32_t GetSalt() { return salt_; }
++
+  private:
+   uint32_t array_index() {
+     ASSERT(is_array_index());
+@@ -5780,6 +5782,7 @@
+   bool is_first_char_;
+   bool is_valid_;
+   friend class TwoCharHashTableKey;
++  static const uint32_t salt_;
+ };
+ 
+ 
+diff -Nura node-v0.6.7/deps/v8/src/utils.h node-v0.6.7.patched/deps/v8/src/utils.h
+--- node-v0.6.7/deps/v8/src/utils.h	2012-01-08 02:23:39.000000000 +0800
++++ node-v0.6.7.patched/deps/v8/src/utils.h	2012-01-08 02:23:55.000000000 +0800
+@@ -31,6 +31,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <climits>
++#include <time.h>
+ 
+ #include "globals.h"
+ #include "checks.h"
+@@ -241,6 +242,9 @@
+ // http://www.concentric.net/~Ttwang/tech/inthash.htm
+ static inline uint32_t ComputeIntegerHash(uint32_t key) {
+   uint32_t hash = key;
++  time_t now;
++  static const uint32_t salt = (uint32_t)time(&now);
++  hash ^= salt;
+   hash = ~hash + (hash << 15);  // hash = (hash << 15) - hash - 1;
+   hash = hash ^ (hash >> 12);
+   hash = hash + (hash << 2);
