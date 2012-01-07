@@ -1,5 +1,8 @@
-Node.js v0.6.6.7 has announced the settlement of the hash collision leak. But they just fix the leak of string hash. The number hash leak still exist.
-This is another independent patch to fix the leak (both string hash and number hash) based on original v8 v3.6.6.15 source code.
+Node.js v0.6.6.7 has announced the settlement of the hash collision leak.
+But they just fix the leak of string hash. The number hash leak still exist.
+
+This is another independent patch to fix the leak (both string hash and
+number hash) based on original v8 v3.6.6.15 source code.
 
 1. download node v0.6.6.7 source code [http://nodejs.org/dist/v0.6.7/node-v0.6.7.tar.gz]
 2. tar xzvf node-v0.6.7.tar.gz
